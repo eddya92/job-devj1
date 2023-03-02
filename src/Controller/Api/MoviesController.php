@@ -1,27 +1,38 @@
 <?php
+declare(strict_types=1);
 
 namespace App\Controller\Api;
 
+use App\Repository\MovieRepository;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Doctrine\DBAL\Connection;
 
 class MoviesController extends AbstractController
 {
-    #[Route('/api/movies')]
-    public function list(Connection $db): Response
+    public function __construct(
+        private MovieRepository $movieRepository
+    )
     {
-        $rows = $db->createQueryBuilder()
-            ->select("m.*")
-            ->from("movies", "m")
-            ->orderBy("m.release_date", "DESC")
-            ->setMaxResults(50)
-            ->executeQuery()
-            ->fetchAllAssociative();
+    }
+
+    #[Route('/api/movies')]
+    public function list(Request $request): Response
+    {
+        $sort = $request->query->get('order_by');
+        $genre = $request->query->get('genre');
+
+        try {
+            $movies = $this->movieRepository->allSortedBy($sort, $genre);
+        } catch (Exception $exception) {
+            //Todo componente pagina di errore
+            $movies = [];
+        }
 
         return $this->json([
-            "movies" => $rows
+            "movies" => $movies
         ]);
     }
 }
